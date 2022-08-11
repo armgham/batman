@@ -2,6 +2,7 @@
 
 CORE_FIRST=$(cat /proc/cpuinfo | awk '/^processor/{print $3}' | sed -n 1p)
 CORE_LAST=$(cat /proc/cpuinfo | awk '/^processor/{print $3}' | tail -1)
+CORE_HALF=$(expr $(cat /proc/cpuinfo | awk '/^processor/{print $3}' | wc -l) / 2 - 1)
 
 function powersave() {
     for ((i=$CORE_FIRST;i<=$CORE_LAST; i++))
@@ -17,6 +18,20 @@ function schedutil() {
     done
 }
 
+function offline() {
+    for ((i=$CORE_FIRST;i<=$CORE_HALF; i++))
+    do
+         echo "0" > /sys/devices/system/cpu/cpu$i/online
+    done
+}
+
+function online() {
+    for ((i=$CORE_FIRST;i<=$CORE_HALF; i++))
+    do
+         echo "1" > /sys/devices/system/cpu/cpu$i/online
+    done
+}
+
 echo "" > /tmp/batman_stat
 
 while [[ true ]]
@@ -24,6 +39,7 @@ do
     SCREEN_OLD=$(cat /tmp/batman_stat)
     SCREEN=$(cat /sys/devices/platform/soc/c440000.qcom,spmi/spmi-0/spmi0-05/c440000.qcom,spmi:qcom,pm6150l@5:qcom,wled@d800/backlight/backlight/brightness)
     CHARGE=$(upower -d | grep state | awk '!seen[$0]++' |cut -c 26-)
+    TIME=$(expr $(expr $(date +%s) - $(stat /tmp/batman_stat -c %Y)) / 60)
 
     if [ "$SCREEN_OLD" != "SCREEN" ] && [ "$CHARGE" == "discharging" ] && [ "$SCREEN" == "0" ]; then
        powersave
@@ -31,6 +47,12 @@ do
        schedutil
     else
        schedutil
+    fi
+
+    if [ "$SCREEN_OLD" != "SCREEN" ] && [ "$CHARGE" == "discharging" ] && [ "$SCREEN" == "0" ] && [ "$TIME" -ge "5" ]; then
+       offline
+    else
+       online
     fi
 
     if [ "$SCREEN_OLD" != "$SCREEN" ]; then
