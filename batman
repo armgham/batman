@@ -45,7 +45,7 @@ while [[ true ]]
 do
     SCREEN_OLD=$(cat /tmp/batman_stat)
     SCREEN=$(cat /sys/devices/platform/soc/ae00000.qcom,mdss_mdp/backlight/panel0-backlight/brightness)
-    CHARGE=$(upower -d | grep state | awk '!seen[$0]++' |cut -c 26-)
+    CHARGE=$(upower -d | grep state | awk '!seen[$0]++' | cut -c 26- | sed -n 1p)
     TIME=$(expr $(expr $(date +%s) - $(stat /tmp/batman_stat -c %Y)) / 60)
 
     if [ "$SCREEN_OLD" != "SCREEN" ] && [ "$CHARGE" == "discharging" ] && [ "$SCREEN" == "0" ]; then
